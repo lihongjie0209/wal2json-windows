@@ -41,12 +41,8 @@ try {
     $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
     $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
     if (-not $vs) { throw 'MSVC C++ tools not installed' }
-    $devcmd = Join-Path $vs 'Common7/Tools/VsDevCmd.bat'
-    $environment = & cmd.exe /d /s /c "`"`"$devcmd`" -no_logo -arch=$Arch -host_arch=x64 >nul && set`""
-    Check 'MSVC environment'
-    foreach ($line in $environment) {
-        if ($line -match '^([^=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process') }
-    }
+    Import-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
+    Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=$Arch -host_arch=x64"
     Push-Location $work
     try {
         & cl.exe /nologo /LD /O2 /MT /DWIN32 /D_WINDOWS /D__WINDOWS__ /D__WIN32__ /DWIN32_STACK_RLIMIT=4194304 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE "/I$pg/include/server/port/win32_msvc" "/I$pg/include/server/port/win32" "/I$pg/include/server" "/I$pg/include" "$source/wal2json.c" /link "/LIBPATH:$pg/lib" postgres.lib /OUT:wal2json.dll "/MACHINE:$Arch"
