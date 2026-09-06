@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: ['9.4.26', '9.5.25', '9.6.24']
+        pg: ['9.4.26', '9.5.2', '9.5.25', '9.6.24']
         arch: [x86, x64]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

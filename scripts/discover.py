@@ -28,7 +28,8 @@ while True:
         break
     releases.extend(batch)
     page += 1
-published = {r["tag_name"] for r in releases if not r["draft"]}
+published = {r["tag_name"] for r in releases if not r["draft"] and
+             len([a for a in r["assets"] if a["name"].endswith('.zip')]) >= 8}
 selected = [
     {"tag": t["name"], "sha": t["commit"]["sha"]}
     for t in tags

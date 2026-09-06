@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][ValidatePattern('^wal2json_\d+_\d+(_\d+)?$')][string]$Tag,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$Commit,
-    [Parameter(Mandatory)][ValidateSet('9.4.26','9.5.25','9.6.24')][string]$PgVersion,
+    [Parameter(Mandatory)][ValidateSet('9.4.26','9.5.2','9.5.25','9.6.24')][string]$PgVersion,
     [Parameter(Mandatory)][ValidateSet('x86','x64')][string]$Arch
 )
 $ErrorActionPreference = 'Stop'
@@ -65,10 +65,25 @@ try {
     Sql "INSERT INTO probe VALUES (1, 'before')"
     Sql "UPDATE probe SET value = 'after' WHERE id = 1"
     Sql 'DELETE FROM probe WHERE id = 1'
-    $json = @(Sql "SELECT data FROM pg_logical_slot_get_changes('smoke', NULL, NULL)")
+    $json = @(Sql "SELECT data FROM pg_logical_slot_get_changes('smoke', NULL, NULL, 'include-lsn', 'true')")
+    foreach ($line in $json) {
+        $txn = $line | ConvertFrom-Json
+        if (-not $txn.nextlsn -or $txn.nextlsn -eq '0/0') { throw 'Invalid transaction end LSN' }
+    }
     $changes = @($json | ForEach-Object { ($_ | ConvertFrom-Json).change } | Where-Object { $_.table -eq 'probe' })
     if ($changes.Count -ne 3 -or ($changes.kind -join ',') -ne 'insert,update,delete') { throw 'Incorrect decoded changes' }
     if ($changes[0].columnvalues[1] -ne 'before' -or $changes[1].columnvalues[1] -ne 'after' -or $changes[2].oldkeys.keyvalues[0] -ne 1) { throw 'Incorrect decoded values' }
+    if ([int]($Tag.Split('_')[1]) -ge 2) {
+        Sql "INSERT INTO probe VALUES (2, 'format2')"
+        $format2 = @(Sql "SELECT data FROM pg_logical_slot_get_changes('smoke', NULL, NULL, 'format-version', '2', 'include-lsn', 'true')")
+        $records = @($format2 | ForEach-Object { $_ | ConvertFrom-Json })
+        if (($records.action -join ',') -ne 'B,I,C') { throw 'Incorrect format 2 boundaries' }
+        $begin = $records[0]; $end = $records[2]
+        if (-not $end.nextlsn -or $end.nextlsn -eq '0/0' -or $begin.nextlsn -ne $end.nextlsn -or $begin.lsn -ne $end.lsn) { throw 'Incorrect format 2 transaction LSNs' }
+        $valid = Sql "SELECT '$($end.nextlsn)'::pg_lsn > '$($end.lsn)'::pg_lsn"
+        if ($valid -ne 't') { throw 'Transaction end must follow commit LSN' }
+        $json += $format2
+    }
     Sql "SELECT pg_drop_replication_slot('smoke')"
     $package = Join-Path $work 'package'
     $null = New-Item -ItemType Directory -Path $package
