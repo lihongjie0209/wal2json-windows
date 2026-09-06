@@ -49,7 +49,7 @@ try {
     Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=$Arch -host_arch=x64"
     Push-Location $work
     try {
-        & cl.exe /nologo /LD /O2 /MT /DWIN32 /D_WINDOWS /D__WINDOWS__ /D__WIN32__ /DWIN32_STACK_RLIMIT=4194304 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE "/I$pg/include/server/port/win32_msvc" "/I$pg/include/server/port/win32" "/I$pg/include/server" "/I$pg/include" "$source/wal2json.c" /link "/LIBPATH:$pg/lib" postgres.lib /OUT:wal2json.dll "/MACHINE:$Arch"
+        & cl.exe /nologo /LD /O2 /MT /DWIN32 /D_WINDOWS /D__WINDOWS__ /D__WIN32__ /DWIN32_STACK_RLIMIT=4194304 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE "/FI$PSScriptRoot/compat.h" "/I$pg/include/server/port/win32_msvc" "/I$pg/include/server/port/win32" "/I$pg/include/server" "/I$pg/include" "$source/wal2json.c" /link "/LIBPATH:$pg/lib" postgres.lib /OUT:wal2json.dll "/MACHINE:$Arch"
         Check 'DLL compilation'
     } finally { Pop-Location }
     Copy-Item "$work/wal2json.dll" "$pg/lib/wal2json.dll"
@@ -96,6 +96,7 @@ try {
     $null = New-Item -ItemType Directory -Path $package
     Copy-Item "$work/wal2json.dll" $package
     Copy-Item "$source/wal2json.c" $package
+    Copy-Item "$PSScriptRoot/compat.h" $package
     Copy-Item "$source/LICENSE" (Join-Path $package 'LICENSE.wal2json')
     Copy-Item (Join-Path $root 'README.md') $package
     $json | Set-Content (Join-Path $package 'smoke-test.jsonl') -Encoding utf8
@@ -109,6 +110,8 @@ try {
         packaging_commit = $env:GITHUB_SHA; runner_image = $env:ImageVersion
         compiler = (Get-Item (Get-Command cl.exe).Source).VersionInfo.FileVersion
         runtime_linkage = 'static /MT'; smoke_test = 'passed'; server_version = "$version"
+        compatibility_header_sha256 = (Get-FileHash "$PSScriptRoot/compat.h" -Algorithm SHA256).Hash.ToLowerInvariant()
+        plugin_nls = 'disabled (diagnostic messages only)'
     }
     $manifest | ConvertTo-Json | Set-Content (Join-Path $package 'manifest.json') -Encoding utf8
     Compress-Archive -Path "$package/*" -DestinationPath (Join-Path $dist "$Tag-pg$PgVersion-windows-$Arch.zip")
