@@ -73,7 +73,8 @@ try {
     $changes = @($json | ForEach-Object { ($_ | ConvertFrom-Json).change } | Where-Object { $_.table -eq 'probe' })
     if ($changes.Count -ne 3 -or ($changes.kind -join ',') -ne 'insert,update,delete') { throw 'Incorrect decoded changes' }
     if ($changes[0].columnvalues[1] -ne 'before' -or $changes[1].columnvalues[1] -ne 'after' -or $changes[2].oldkeys.keyvalues[0] -ne 1) { throw 'Incorrect decoded values' }
-    if ([int]($Tag.Split('_')[1]) -ge 2) {
+    $tagParts = $Tag.Split('_')
+    if ([int]$tagParts[1] -gt 2 -or ([int]$tagParts[1] -eq 2 -and [int]$tagParts[2] -ge 6)) {
         Sql "INSERT INTO probe VALUES (2, 'format2')"
         $format2 = @(Sql "SELECT data FROM pg_logical_slot_get_changes('smoke', NULL, NULL, 'format-version', '2', 'include-lsn', 'true')")
         $records = @($format2 | ForEach-Object { $_ | ConvertFrom-Json })

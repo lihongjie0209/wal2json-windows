@@ -4,15 +4,16 @@ Unofficial, independently maintained packaging of [eulerto/wal2json](https://git
 
 ## Downloads and compatibility
 
-Each successful upstream tag gets a matching GitHub Release with six ZIPs:
+Each successful upstream tag gets a matching GitHub Release with eight ZIPs:
 
 | PostgreSQL family | Build/test baseline | Targets |
 | --- | --- | --- |
 | 9.4 | 9.4.26 | x86, x64 |
 | 9.5 | 9.5.25 | x86, x64 |
+| 9.5 (legacy ABI) | 9.5.2 | x86, x64 |
 | 9.6 | 9.6.24 | x86, x64 |
 
-Choose the **server's** architecture, not the operating system's. A DLL is not portable across PG major versions or architectures. Older patch versions and different distributions need independent validation. Windows Server 2022 smoke tests do not certify all historical Windows operating systems. These PostgreSQL releases are **end-of-life** and have security risks; prefer upgrading where possible.
+Choose the **server's** architecture, not the operating system's. Match the **exact tested patch version**, not just the major version. Native verification found that the 9.5.25 DLL loads on 9.5.2 but emits incorrect transaction LSNs due to an internal structure layout change. Use the dedicated 9.5.2 package on 9.5.2. Other patch versions and distributions need independent validation. Windows Server 2022 smoke tests do not certify all historical Windows operating systems. These PostgreSQL releases are **end-of-life** and have security risks; prefer upgrading where possible.
 
 ZIPs contain only the plugin DLL, upstream source/license, metadata and test evidence, not PostgreSQL binaries or databases. DLLs are unsigned; verify release SHA256SUMS. Version-specific PostgreSQL dependencies are downloaded from EDB over HTTPS in CI. Their observed SHA256 hashes are recorded in manifests for traceability; these are not publisher signatures or independently authenticated dependency checksums.
 
@@ -28,7 +29,7 @@ No `CREATE EXTENSION wal2json` is needed. The plugin converts WAL changes to JSO
 
 ## Release automation
 
-`Package upstream tags` runs daily or via manual dispatch (`tag`: an upstream tag or `all`). It discovers unpublished upstream tags, resolves each to a commit, and builds all six combinations. Each combination must compile and pass native `LOAD`, slot creation, INSERT/UPDATE/DELETE JSON assertions and slot cleanup. Publication occurs only after all six succeed. Unsupported future upstream tags fail closed rather than publishing partial releases. Published releases are not overwritten. Failed draft uploads can be retried.
+`Package upstream tags` runs daily or via manual dispatch (`tag`: an upstream tag or `all`). It discovers unpublished/incomplete upstream tags, resolves each to a commit, and builds all eight combinations. Each combination must compile and pass native `LOAD`, slot creation, INSERT/UPDATE/DELETE JSON and transaction LSN assertions and slot cleanup. Publication occurs only after all eight succeed. Unsupported future upstream tags fail closed rather than publishing partial releases. Public ZIPs are never overwritten; adding a new compatibility target uses additional assets and checksums. Failed draft uploads can be retried.
 
 Repository release tags point to the **packaging commit**; the exact **upstream commit** is separately recorded in every manifest and release. Runtime dependencies/toolchain details and DLL hashes are recorded. This is traceable packaging, not a claim of bit-for-bit reproducible builds.
 
