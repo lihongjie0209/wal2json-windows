@@ -1,13 +1,12 @@
 /* Build-only compatibility for old Windows PostgreSQL development packages.
  * No server data structures are changed. Included before wal2json.c by /FI.
  */
-#include "pg_config.h"
-
 /* EDB's legacy archives can enable NLS but omit libintl.h/import libraries.
  * The plugin has no translation catalog: use the server headers' standard
  * non-NLS macros for plugin diagnostics only. Database text is unaffected.
+ * build.ps1 appends #undef ENABLE_NLS to its disposable pg_config.h copy:
+ * those old generated headers do not have include guards.
  */
-#undef ENABLE_NLS
 #include "postgres.h"
 #include "access/tupdesc.h"
 

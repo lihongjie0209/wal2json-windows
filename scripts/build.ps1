@@ -34,6 +34,9 @@ try {
     Write-Output "PostgreSQL dependency SHA256: $($dep.sha256)"
     & 7z.exe x $archive "-o$work" -y | Out-Null
     Check 'PostgreSQL extraction'
+    # pg_config.h has no include guard in these versions, so /U or an early
+    # #undef would be undone by its next inclusion. Modify only this build copy.
+    Add-Content -LiteralPath "$pg/include/server/pg_config.h" -Encoding ascii -Value "`n/* wal2json packaging: diagnostics without NLS */`n#undef ENABLE_NLS`n"
     & git clone --quiet --no-checkout https://github.com/eulerto/wal2json.git (Join-Path $work 'source')
     Check 'Source clone'
     $source = Join-Path $work 'source'
