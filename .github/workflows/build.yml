@@ -1,0 +1,55 @@
+name: Build and verify one tag
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ['9.4.26', '9.5.25', '9.6.24']
+        arch: [x86, x64]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build DLL and test in native PostgreSQL
+        shell: pwsh
+        env:
+          UPSTREAM_TAG: ${{ inputs.tag }}
+          UPSTREAM_SHA: ${{ inputs.sha }}
+          PG_VERSION: ${{ matrix.pg }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: ./scripts/build.ps1 -Tag $env:UPSTREAM_TAG -Commit $env:UPSTREAM_SHA -PgVersion $env:PG_VERSION -Arch $env:TARGET_ARCH
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ inputs.tag }}-pg${{ matrix.pg }}-${{ matrix.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+  release:
+    needs: windows
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: ${{ inputs.tag }}-pg*
+          path: dist
+          merge-multiple: true
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_TAG: ${{ inputs.tag }}
+          UPSTREAM_SHA: ${{ inputs.sha }}
+        run: python3 scripts/release.py

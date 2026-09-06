@@ -1,0 +1,42 @@
+name: Package upstream tags
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Upstream tag (e.g. wal2json_2_6), or all unpublished tags
+        default: all
+        required: true
+        type: string
+  schedule:
+    - cron: '23 3 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: upstream-releases
+  cancel-in-progress: false
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.tags.outputs.matrix }}
+      count: ${{ steps.tags.outputs.count }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - id: tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag || 'all' }}
+        run: python3 scripts/discover.py
+  package:
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build.yml
+    with:
+      tag: ${{ matrix.tag }}
+      sha: ${{ matrix.sha }}
