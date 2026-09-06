@@ -15,12 +15,20 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.targets.outputs.matrix }}
+      count: ${{ steps.targets.outputs.count }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - id: targets
         run: python3 scripts/targets.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ${{ inputs.tag }}-coverage
+          path: coverage.json
+          if-no-files-found: error
   windows:
     needs: targets
+    if: needs.targets.outputs.count != '0'
     runs-on: windows-2022
     timeout-minutes: 30
     strategy:
@@ -36,7 +44,8 @@ jobs:
           UPSTREAM_SHA: ${{ inputs.sha }}
           PG_VERSION: ${{ matrix.pg }}
           TARGET_ARCH: ${{ matrix.arch }}
-        run: ./scripts/build.ps1 -Tag $env:UPSTREAM_TAG -Commit $env:UPSTREAM_SHA -PgVersion $env:PG_VERSION -Arch $env:TARGET_ARCH
+          PG_URL: ${{ matrix.url }}
+        run: ./scripts/build.ps1 -Tag $env:UPSTREAM_TAG -Commit $env:UPSTREAM_SHA -PgVersion $env:PG_VERSION -Arch $env:TARGET_ARCH -PgURL $env:PG_URL
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ inputs.tag }}-pg${{ matrix.pg }}-${{ matrix.arch }}
@@ -52,7 +61,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          pattern: ${{ inputs.tag }}-pg*
+          pattern: ${{ inputs.tag }}-*
           path: dist
           merge-multiple: true
       - name: Publish complete release

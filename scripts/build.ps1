@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^wal2json_\d+_\d+(_\d+)?$')][string]$Tag,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$Commit,
     [Parameter(Mandatory)][ValidatePattern('^9\.[456]\.\d{1,2}$')][string]$PgVersion,
-    [Parameter(Mandatory)][ValidateSet('x86','x64')][string]$Arch
+    [Parameter(Mandatory)][ValidateSet('x86','x64')][string]$Arch,
+    [string]$PgURL = ''
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -22,7 +23,10 @@ function Sql([string]$Statement) {
 }
 try {
     $platform = if ($Arch -eq 'x86') { 'windows' } else { 'windows-x64' }
-    $dep = @{ url = "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-1-$platform-binaries.zip" }
+    if (-not $PgURL) { $PgURL = "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-1-$platform-binaries.zip" }
+    $urlPattern = '^https://get\.enterprisedb\.com/postgresql/postgresql-' + [regex]::Escape($PgVersion) + '-[123]-' + $platform + '-binaries\.zip$'
+    if ($PgURL -notmatch $urlPattern) { throw 'Unexpected PostgreSQL dependency URL' }
+    $dep = @{ url = $PgURL }
     $archive = Join-Path $work 'postgres.zip'
     & curl.exe --fail --location --retry 4 --output $archive $dep.url
     Check 'PostgreSQL download'

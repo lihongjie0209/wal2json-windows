@@ -30,7 +30,7 @@ while True:
     releases.extend(batch)
     page += 1
 published = {r["tag_name"] for r in releases if not r["draft"] and
-             len([a for a in r["assets"] if a["name"].endswith('.zip')]) >= len(TARGETS)}
+             any(a["name"] == "coverage.json" for a in r["assets"])}
 selected = [
     {"tag": t["name"], "sha": t["commit"]["sha"]}
     for t in tags
