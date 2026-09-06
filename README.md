@@ -4,14 +4,15 @@ Unofficial, independently maintained packaging of [eulerto/wal2json](https://git
 
 ## Downloads and compatibility
 
-Each successful upstream tag gets a matching GitHub Release with eight ZIPs:
+The build matrix covers **156 targets per upstream tag**, one package per exact patch version and architecture:
 
 | PostgreSQL family | Build/test baseline | Targets |
 | --- | --- | --- |
-| 9.4 | 9.4.26 | x86, x64 |
-| 9.5 | 9.5.25 | x86, x64 |
-| 9.5 (legacy ABI) | 9.5.2 | x86, x64 |
-| 9.6 | 9.6.24 | x86, x64 |
+| 9.4 | 9.4.0–9.4.26 | x86, x64 |
+| 9.5 | 9.5.0–9.5.25 | x86, x64 |
+| 9.6 | 9.6.0–9.6.24 | x86, x64 |
+
+`coverage.json` on a completed release is authoritative: `verified` means compile/load/DML/LSN tests passed; `missing` means all probed EDB archive revisions returned 404/410, with URLs and status codes recorded. A release without this file predates full-matrix coverage. EDB revision suffixes 1, 2 and 3 are probed, including known `-2` reissues. HTTP 403, transient/network failures, corrupt downloads, compiler errors and test failures are **not skips** and block publication. CI's dependency job exposes all outcomes in its step summary and coverage artifact.
 
 Choose the **server's** architecture, not the operating system's. Match the **exact tested patch version**, not just the major version. Native verification found that the 9.5.25 DLL loads on 9.5.2 but emits incorrect transaction LSNs due to an internal structure layout change. Use the dedicated 9.5.2 package on 9.5.2. Other patch versions and distributions need independent validation. Windows Server 2022 smoke tests do not certify all historical Windows operating systems. These PostgreSQL releases are **end-of-life** and have security risks; prefer upgrading where possible.
 
@@ -29,7 +30,9 @@ No `CREATE EXTENSION wal2json` is needed. The plugin converts WAL changes to JSO
 
 ## Release automation
 
-`Package upstream tags` runs daily or via manual dispatch (`tag`: an upstream tag or `all`). It discovers unpublished/incomplete upstream tags, resolves each to a commit, and builds all eight combinations. Each combination must compile and pass native `LOAD`, slot creation, INSERT/UPDATE/DELETE JSON and transaction LSN assertions and slot cleanup. Publication occurs only after all eight succeed. Unsupported future upstream tags fail closed rather than publishing partial releases. Public ZIPs are never overwritten; adding a new compatibility target uses additional assets and checksums. Failed draft uploads can be retried.
+`Package upstream tags` runs daily or via manual dispatch (`tag`: an upstream tag or `all`). It processes one upstream tag per run, at most 16 Windows jobs concurrently. An `all` run dispatches the next tag only after successful publication. Each available combination must compile and pass native `LOAD`, slot creation, INSERT/UPDATE/DELETE JSON and transaction LSN assertions and slot cleanup. Format 2 LSN checks additionally run for wal2json 2.6+. Unsupported upstream tags fail closed rather than publishing partial releases. Public ZIPs are never overwritten; adding targets uses additional assets and `SHA256SUMS-additions-*` alongside the original checksum files. Failed draft uploads can be retried.
+
+Legacy EDB development archives sometimes enable gettext/NLS without shipping `libintl.h`. Build copies disable plugin diagnostic translation only; server ABI structures, encodings and data are unchanged. `compat.h` also provides old accessor/conversion macros missing from historical wal2json tags. Its hash and NLS choice are included in the manifest, and the header is shipped alongside unmodified upstream `wal2json.c`.
 
 Repository release tags point to the **packaging commit**; the exact **upstream commit** is separately recorded in every manifest and release. Runtime dependencies/toolchain details and DLL hashes are recorded. This is traceable packaging, not a claim of bit-for-bit reproducible builds.
 
