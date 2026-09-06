@@ -40,3 +40,13 @@ jobs:
     with:
       tag: ${{ matrix.tag }}
       sha: ${{ matrix.sha }}
+  next-tag:
+    needs: package
+    if: inputs.tag == 'all' || github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run tags.yml --repo "$GITHUB_REPOSITORY" -f tag=all

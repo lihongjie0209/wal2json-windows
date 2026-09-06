@@ -11,14 +11,22 @@ on:
 permissions:
   contents: read
 jobs:
+  targets:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - id: targets
+        run: python3 scripts/targets.py
   windows:
+    needs: targets
     runs-on: windows-2022
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        pg: ['9.4.26', '9.5.2', '9.5.25', '9.6.24']
-        arch: [x86, x64]
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.targets.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Build DLL and test in native PostgreSQL

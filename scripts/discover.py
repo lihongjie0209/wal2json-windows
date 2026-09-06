@@ -3,6 +3,7 @@ import json
 import os
 import re
 import subprocess
+from targets import TARGETS
 
 
 def api(path):
@@ -29,7 +30,7 @@ while True:
     releases.extend(batch)
     page += 1
 published = {r["tag_name"] for r in releases if not r["draft"] and
-             len([a for a in r["assets"] if a["name"].endswith('.zip')]) >= 8}
+             len([a for a in r["assets"] if a["name"].endswith('.zip')]) >= len(TARGETS)}
 selected = [
     {"tag": t["name"], "sha": t["commit"]["sha"]}
     for t in tags
@@ -39,6 +40,8 @@ selected = [
 ]
 if requested != "all" and not any(t["name"] == requested for t in tags):
     raise SystemExit("Tag does not exist upstream")
+# One upstream tag per run keeps the nested Windows matrix bounded to 156 jobs.
+selected = selected[:1]
 with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
     output.write("matrix=" + json.dumps({"include": selected}) + "\n")
     output.write("count=" + str(len(selected)) + "\n")

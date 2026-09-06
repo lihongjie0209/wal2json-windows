@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][ValidatePattern('^wal2json_\d+_\d+(_\d+)?$')][string]$Tag,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$Commit,
-    [Parameter(Mandatory)][ValidateSet('9.4.26','9.5.2','9.5.25','9.6.24')][string]$PgVersion,
+    [Parameter(Mandatory)][ValidatePattern('^9\.[456]\.\d{1,2}$')][string]$PgVersion,
     [Parameter(Mandatory)][ValidateSet('x86','x64')][string]$Arch
 )
 $ErrorActionPreference = 'Stop'
@@ -56,7 +56,9 @@ try {
     $started = $true
     $version = Sql 'SELECT version()'
     $version | Write-Output
-    if ($version -notmatch [regex]::Escape("PostgreSQL $PgVersion,")) { throw 'Unexpected server version' }
+    $pgParts = $PgVersion.Split('.')
+    $expectedVersion = 90000 + [int]$pgParts[1] * 100 + [int]$pgParts[2]
+    if ((Sql "SHOW server_version_num") -ne "$expectedVersion") { throw 'Unexpected server version' }
     $bits = if ($Arch -eq 'x86') { '32-bit' } else { '64-bit' }
     if ($version -notmatch $bits) { throw 'Unexpected server architecture' }
     Sql "LOAD 'wal2json'"

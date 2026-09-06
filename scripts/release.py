@@ -5,12 +5,12 @@ import os
 from pathlib import Path
 import subprocess
 import zipfile
+from targets import TARGETS
 
 tag = os.environ["UPSTREAM_TAG"]
 sha = os.environ["UPSTREAM_SHA"]
 repo = os.environ["GITHUB_REPOSITORY"]
-expected = {f"{tag}-pg{pg}-windows-{arch}.zip" for pg in
-            ("9.4.26", "9.5.2", "9.5.25", "9.6.24") for arch in ("x86", "x64")}
+expected = {f"{tag}-pg{t['pg']}-windows-{t['arch']}.zip" for t in TARGETS}
 files = sorted(Path("dist").glob("*.zip"))
 assert {p.name for p in files} == expected, "Incomplete release"
 for path in files:
@@ -26,7 +26,7 @@ notes.write_text(f"""Unofficial Windows builds of [eulerto/wal2json {tag}](https
 
 Upstream commit: `{sha}`. Packaging commit: `{os.environ['GITHUB_SHA']}`.
 
-Eight tested packages: PostgreSQL 9.4.26 / 9.5.2 / 9.5.25 / 9.6.24, each x86 and x64.
+156 tested packages: every PostgreSQL 9.4.0–9.4.26 / 9.5.0–9.5.25 / 9.6.0–9.6.24 patch version, each x86 and x64.
 Each ZIP contains wal2json.dll, upstream source/license, manifest and native LOAD + INSERT/UPDATE/DELETE smoke-test output.
 Match the exact tested PostgreSQL patch version AND architecture. 9.5.25 DLLs are NOT compatible with 9.5.2 transaction LSN layout; use the dedicated 9.5.2 package.
 These PostgreSQL versions are end-of-life; this release does not make them secure or supported.
@@ -44,7 +44,7 @@ else:
 upload = [str(p) for p in files if p.name not in public_names]
 if public_names:
     # Preserve existing checksums too; additions have a separate checksum file.
-    checksums = Path('dist/SHA256SUMS-pg9.5.2')
+    checksums = Path('dist/SHA256SUMS-additions-' + os.environ['GITHUB_RUN_ID'])
     checksums.write_text(''.join(f'{hashlib.sha256(Path(p).read_bytes()).hexdigest()}  {Path(p).name}\n' for p in upload))
 subprocess.run(["gh", "release", "upload", tag, "--repo", repo, "--clobber", *upload, str(checksums)], check=True)
 subprocess.run(["gh", "release", "edit", tag, "--repo", repo, "--draft=false", "--latest=false", "--notes-file", str(notes)], check=True)
