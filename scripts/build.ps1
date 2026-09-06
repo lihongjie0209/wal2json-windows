@@ -119,6 +119,10 @@ try {
     $manifest | ConvertTo-Json | Set-Content (Join-Path $package 'manifest.json') -Encoding utf8
     Compress-Archive -Path "$package/*" -DestinationPath (Join-Path $dist "$Tag-pg$PgVersion-windows-$Arch.zip")
 } finally {
+    if (Test-Path "$work/server.log") {
+        Write-Output 'PostgreSQL server log:'
+        Get-Content -LiteralPath "$work/server.log" | Write-Output
+    }
     $safe = $true
     if ($started -or (Test-Path "$data/postmaster.pid")) {
         & "$pg/bin/pg_ctl.exe" -D $data -m fast -w stop

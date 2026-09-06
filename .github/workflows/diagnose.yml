@@ -1,0 +1,26 @@
+name: Diagnose one PostgreSQL version
+on:
+  workflow_dispatch:
+    inputs:
+      pg:
+        description: Exact PostgreSQL version
+        required: true
+        default: '9.4.12'
+        type: string
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - shell: pwsh
+        env:
+          PG_VERSION: ${{ inputs.pg }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: ./scripts/build.ps1 -Tag wal2json_2_6 -Commit 75629c2e1e81a12350cc9d63782fc53252185d8d -PgVersion $env:PG_VERSION -Arch $env:TARGET_ARCH
